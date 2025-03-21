@@ -2,6 +2,8 @@
 
 This has just the files with code in them.
 
+Note: I didn't add comments to some sections yet, so if you don't understand smth lmk
+
 These were the changes I made:
   login.py -- creates a login page where user can either log in with existing account or create a new one
 
