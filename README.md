@@ -12,3 +12,5 @@ under main.py:
 Here is a link to a youtube video with a screen recording of the overall app just so you could see how it looks
   it only mainly showed the login screens and dashboard
   I didn't really change anything to the detection part
+
+This is the link to the code we used for regionals, in case you want to look at the old code: https://github.com/frfnstf/tsa_comp
