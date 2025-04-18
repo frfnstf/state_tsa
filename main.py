@@ -17,6 +17,7 @@ from login import show_login_window
 
 global username, is_logged_in
 username, is_logged_in = show_login_window()
+done_with_program = False
 
 def on_closing():
     if messagebox.askokcancel("Warning", "You will be automatically logged out. Click \"OK\" to accept."):
@@ -27,7 +28,7 @@ def logout():
     global is_logged_in, done_with_program
     is_logged_in = False
     done_with_program = True
-    app.quit()
+    app.withdraw()
     setup_app()
 
 # Setup the application
@@ -44,7 +45,8 @@ def setup_app():
         sys.exit()
     else:
         username, is_logged_in = show_login_window()
-        setup_app()
+        if is_logged_in:
+            setup_app()
 
 # Define variables for frequently used colors
 bg_color = '#e1ffd4'
@@ -68,6 +70,7 @@ def setup_frame(frame):
     lbl_bk.image = img
     lbl_bk.place(relx=0.5, rely = 0.5, anchor=CENTER)
 
+    # Creating the toggle menu at the top left of screen
     def toggle_menu():
         def collapse_toggle_menu():
             toggle_menu_frame.destroy()
@@ -83,13 +86,13 @@ def setup_frame(frame):
         btn2.place(x=20, y=80)
 
         btn3 = Button(toggle_menu_frame, text='About the App', command=homepage_screen)
-        btn3.place(x=20, y=200)
+        btn3.place(x=20, y=140)
 
         btn4 = Button(toggle_menu_frame, text='App Inspiration', command=inspiration_screen)
-        btn4.place(x=20, y=260)
+        btn4.place(x=20, y=200)
 
         btn5 = Button(toggle_menu_frame, text='Sources', command=sources_screen)
-        btn5.place(x=20, y=320)
+        btn5.place(x=20, y=260)
 
         for btn in [btn1, btn2, btn3, btn4, btn5]:
             btn.config(
@@ -105,7 +108,6 @@ def setup_frame(frame):
         toggle_menu_frame.place(x=0, y=50, height=app.winfo_height(), width=300)
 
         toggle_btn.config(text='✕', command=collapse_toggle_menu, highlightthickness=0)
-
 
     head_frame = Frame(
         app,
@@ -168,7 +170,7 @@ def setup_frame(frame):
     head_frame.pack_propagate(False)
     head_frame.config(width=1910, height=50)
 
-
+# Displays user's personalized dashboard
 def dashboard_screen():
     # Create a new frame for the dashboard
     dashboard_frame = Frame(app, width=1910, height=990, bg=bg_color)
@@ -178,37 +180,33 @@ def dashboard_screen():
     title = Label(dashboard_frame, text="My Dashboard", background=bg_color, font=("Times", 40, 'bold'))
     title.place(x=955, y=90, anchor=CENTER)
 
-    # Load user data from CSV
+    # Load user data from CSV file
     df = pd.read_csv("user_data/detection_data.csv")
     disease_counts = df.loc[df['username'] == username, 'healthy_or_no'].value_counts()
     crop_counts = df.loc[(df['username'] == username) & (df['predicted_disease'] != 'Healthy'), 'crop'].value_counts()
 
+    # If there's enough data for this user, then display the charts
     if ((not df.loc[df.username == username].empty) and (len(dict(disease_counts)) == 2)) and (not crop_counts.empty):
-        # Disease frequency
-        # Create a pie chart for disease distribution
+        # Create a pie chart for disease vs healthy detections
         fig1 = plt.figure(figsize=(6, 4))
         ax1 = fig1.add_subplot(111)
-        ax1.pie(disease_counts, labels=["Contains Disease", "Healthy"], autopct='%1.1f%%', startangle=90)
-        ax1.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+        ax1.pie(disease_counts, labels=["Contains Disease", "Healthy"], autopct='%1.1f%%', startangle=90, colors=['#88bf94', '#ace6b9'])
+        ax1.axis('equal')
         ax1.set_title('Distribution of Crop Health: Healthy vs. Diseased Detections')
         fig1.patch.set_edgecolor('#88bf94')
-        fig1.patch.set_linewidth(2)
-
-        # Create a canvas to display the pie chart
+        fig1.patch.set_linewidth(3)
         canvas1 = FigureCanvasTkAgg(fig1, master=dashboard_frame)
         canvas1.draw()
         
-        # Create a bar chart for the number of diseases over time using plt.bar()
+        # Create a bar chart for number of diseases detected per crop
         if len(crop_counts) > 5:
             width = len(crop_counts)
         else:
             width = 5
-        
         fig2 = plt.figure(figsize=(width, 4))
         ax2 = fig2.add_subplot(111)
-            
-        ax2.bar(crop_counts.index, crop_counts)
-        ax2.set_title("Number of Crop Diseases Detected per Crop")
+        ax2.bar(crop_counts.index, crop_counts, color='#88bf94')
+        ax2.set_title("Number of Disease Detections per Crop")
         ax2.set_xlabel("Crop")
         ax2.set_ylabel("Disease Count")
         plt.xticks(rotation=45, ha='right')
@@ -218,21 +216,18 @@ def dashboard_screen():
         canvas2 = FigureCanvasTkAgg(fig2, master=dashboard_frame)
         canvas2.draw()
 
-        # Get the width of the canvases
+        # Make the placement of everything dynamic, based on the width of the bar graph
         canvas1_width = canvas1.get_width_height()[0]
         canvas2_width = canvas2.get_width_height()[0]
-
-        # Calculate positions for even distribution
         total_canvas_width = canvas1_width + canvas2_width
         space_between = (1910 - total_canvas_width) // 3
-
-        # Place the canvases
         canvas1.get_tk_widget().place(x=space_between, y=160, anchor='nw')
         canvas2.get_tk_widget().place(x=space_between * 2 + canvas1_width, y=160, anchor='nw')
 
+        # Create a scrollable checklist that displays sustainable solutions (personalized per user)
         def load_checklist():
             try:
-                with open("checklist.txt", "r") as file:
+                with open("user_data/sustainability_checklist.txt", "r") as file:
                     for line in file:
                         user, item, checked = line.strip().split('|')
                         if user == username:
@@ -244,7 +239,7 @@ def dashboard_screen():
         def save_checklist():
             data = []
             try:
-                with open('checklist.txt', 'r') as file:
+                with open('user_data/sustainability_checklist.txt', 'r') as file:
                     data = file.readlines()
             except FileNotFoundError:
                 pass
@@ -265,11 +260,10 @@ def dashboard_screen():
             for item, checked in user_checklist.items():
                 if not any(line.startswith(f"{username}|{item}|") for line in new_data):
                     new_data.append(f"{username}|{item}|{checked}")
-            with open("checklist.txt", 'w') as file:
+            with open("user_data/sustainability_checklist.txt", 'w') as file:
                 for line in new_data:
                     file.write(line + "\n")
 
-        # Create a scrollable checklist that displays sustainable solutions
         checklist_frame = Frame(dashboard_frame, bg='#88bf94')
         checklist_frame.place(x=space_between, y=650)
 
@@ -324,20 +318,16 @@ def dashboard_screen():
                 activeforeground='black'
             )
             checkbox.pack(anchor=W)
-
         checkbox_frame.update_idletasks()
         canvas.config(scrollregion=canvas.bbox("all"))
-
         canvas.bind("<Configure>", lambda e: canvas.config(scrollregion=canvas.bbox("all")))
-
         checklist_frame.config(width=850, height=250)
         checkbox_frame.config(width=850, height=250)
         canvas.config(width=850, height=250)
-
-        # Button to save checklist
         save_checklist_btn = Button(dashboard_frame, text="Save Checklist", command=save_checklist, background=btn2_dark_green, foreground='white', font=('Arial', 20))
         save_checklist_btn.place(x=425 + space_between, y=925, anchor=N)
 
+        # Create feature for user to look back at disease info (for only detected diseases)
         # Prompts user to select a crop
         select_label = Label(
             dashboard_frame,
@@ -349,11 +339,9 @@ def dashboard_screen():
 
         global caret_down_img_white
         caret_down_img_white = ImageTk.PhotoImage(Image.open('assets/caret-down-white-icon.png').resize((15, 15)))
-
         options = sorted(list(set(list(df.loc[(df['username'] == username), 'crop']))))
         variable1 = StringVar(dashboard_frame)
         variable1.set("Crop")
-
         option_menu1 = OptionMenu(dashboard_frame, variable1, *options)
         option_menu1.place(x=(1060 - space_between * 2) // 2  + space_between + 850, y=725, anchor=CENTER)
 
@@ -387,7 +375,6 @@ def dashboard_screen():
         options = sorted(list(set(list(df.loc[(df['username'] == username) & (df['predicted_disease'] != 'Healthy'), 'predicted_disease']))))
         variable2 = StringVar(dashboard_frame)
         variable2.set("Disease")
-
         option_menu2 = OptionMenu(dashboard_frame, variable2, *options)
         option_menu2.place(x=(1060 - space_between * 2) // 2  + space_between + 850, y=800, anchor=CENTER)
 
@@ -405,7 +392,7 @@ def dashboard_screen():
             indicatoron=False,
             image=caret_down_img_white,
             compound=RIGHT,
-            width=200
+            width=400
         )
 
         menu.config(
@@ -431,14 +418,14 @@ def dashboard_screen():
             elif disease_name not in os.listdir(f"Image_Datasets/{crop_name}"):
                 messagebox.showerror("Error", "The selected disease does not match the selected crop")
             else:
+                map = text_to_map(crop_name, disease_name)
+                sustainable = generate_sustainable_solutions(map)
                 option_menu1.configure(state="disabled")
                 option_menu2.configure(state="disabled")
                 dashboard_frame.destroy()
                 new_frame = Frame(app, width=1910, height=990)
                 new_frame.place(x=0, y=0)
                 setup_frame(new_frame)
-                map = text_to_map(crop_name, disease_name)
-                sustainable = generate_sustainable_solutions(map)
                 title = Label(new_frame, text=f"Information for {disease_name}", background=bg_color, font=("Times", 40, 'bold'))
                 title.place(x=955, y=90, anchor=CENTER)
 
@@ -453,7 +440,7 @@ def dashboard_screen():
                     highlightthickness=2,
                     highlightbackground=btn3_dark_green,
                     highlightcolor='white', font=('Arial', 20))
-                back_to_dashboard.place(x=1600, y=90, anchor=CENTER)
+                back_to_dashboard.place(x=1850, y=90, anchor=E)
 
                 overview_title = Label(new_frame, text="Overview", background=bg_color, font=("Times", 23, 'bold'))
                 overview_text = Label(new_frame, text=map["Overview"], background= bg_color, font=("Arial", 13), wraplength=1000, justify=LEFT)
@@ -519,6 +506,7 @@ def dashboard_screen():
         # Button to launch new_frame
         info_btn = Button(dashboard_frame, text="Go!", command=view_info, background=btn2_dark_green, foreground='white', font=('Arial', 20))
         info_btn.place(x=(1060 - space_between * 2) // 2  + space_between + 850, y=875, anchor=CENTER)
+    
     # If there's not enough data for the user yet
     else:
         no_data_label = Label(dashboard_frame, text="Not enough detection data.", bg=bg_color, font=("Arial", 20))
@@ -532,7 +520,6 @@ def dashboard_screen():
             font=('Arial', 20)
         )
         info_btn.place(x=955, y=525, anchor=CENTER)
-
 
 # Screen for Homepage, displaying overview of project
 def homepage_screen():
@@ -558,11 +545,12 @@ def homepage_screen():
     # Display paragraph of overview
     overview_text = "       Our project aims to bridge the gap between technology and agriculture by providing an innovative solution for crop disease detection and management. "
     overview_text += "We are creating an application that allows users to upload images of their crops, utilizing machine learning techniques to identify specific crop diseases. "
-    overview_text += "Once a disease is identified, the application uses a prefabricated corpus and natural language processing (NLP) to extract relevant information about the symbptoms and treatment options. "
+    overview_text += "Once a disease is identified, the application uses a prefabricated corpus and natural language processing (NLP) to extract relevant information about the symptoms and treatment options. "
     overview_text += "This information is then curated to emphasize environmentally friendly and sustainable practices. "
     overview_text += "Overall, the project not only facilitates timely interventions for crop diseases, but also educates users about sustainable agricultural practices. "
-    overview_text += "A key feature of our application is its scalability; although it currently supports a limited range of crop types and diseases, we can easily add more training datasets to expand its capabilities in the future. "
-    
+    overview_text += "The app also contains personalized data charts and other features based on their detected diseases. "
+    overview_text += "A key feature of our application is its scalability; although it currently supports a limited range of crop types and diseases, we can easily add more training datasets to expand its capabilities in the future."
+
     overview_label = Label(homepage_frame, text=overview_text, background=bg_color, font=("Arial", 14), wraplength=1100, justify=LEFT, anchor="w")
     overview_label.place(x=955, y=675, anchor=CENTER)
 
