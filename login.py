@@ -1,23 +1,23 @@
+# File that displays login window - this is what user sees first when app is launched
 from tkinter import *
 from tkinter import messagebox
 from PIL import ImageTk, Image
 import ast
 import sys
 
-# Global variable to track login state
-global is_logged_in
-is_logged_in = False
-
 def show_login_window():
+    is_logged_in = False
+
     main_login = Tk()
     main_login.title("Login")
     main_login.geometry("900x450+300+200")
 
     main_login.configure(bg='white')
     main_login.resizable(False, False)
-
+    
+    # User already has an account
     def signin():
-        global username, password
+        global username
         username = un.get()
         password = pw.get()
 
@@ -27,13 +27,13 @@ def show_login_window():
         file.close()
 
         if username in r.keys() and password == r[username]:
-            global is_logged_in
+            nonlocal is_logged_in
             is_logged_in = True
-            main_login.destroy()  # Close the login window
-
+            main_login.destroy() # Close the login window
         else:
             messagebox.showerror("Invalid", "Invalid username or password")
 
+    # User needs to create a new account
     def signup_command():
         global signup_win
         signup_win = Toplevel(main_login)
@@ -163,6 +163,7 @@ def show_login_window():
 
         signup_win.mainloop()
 
+    # This is all for if the user already has an account
     img = Image.open("assets/login.jpg").resize((398, 332))
     img = ImageTk.PhotoImage(img)
     Label(main_login, image=img, highlightbackground='#578361', highlightthickness=0, bd=0).place(x=50, y=55)
@@ -214,10 +215,11 @@ def show_login_window():
     signup = Button(frame, width=6, text='Sign up', border=0, bg='white', cursor='hand2', fg="#59836f", command=signup_command)
     signup.place(x=230, y=295)
     
+    # If user closes window here itself, program will terminate
     def on_closing():
         main_login.destroy()
         sys.exit()
-
     main_login.protocol("WM_DELETE_WINDOW", on_closing)
-    main_login.mainloop()
+    main_login.wait_window()
     return username, is_logged_in
+
