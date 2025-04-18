@@ -18,9 +18,7 @@ assets: contains images/graphics displayed in the application
 
 Disease_Corpus: holds .txt files with information about each disease
 
-Image_Dataset: consists of images for each crop disease
-
-Note:
+Note: Image_Dataset and Tuner_Data are not on here because Github can't handle that many files.
 
 Test_Images: not used by the program itself, but this holds images that can be user input in the app itself
 
