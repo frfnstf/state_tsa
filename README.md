@@ -1,5 +1,4 @@
 # state_tsa
 
-This has just the files with code in them.
+This has all files except the training dataset images and the Tuner data bc GitHub can't process that many files
 
-This is the link to the code we used for regionals, in case you want to look at the old code: https://github.com/frfnstf/tsa_comp
