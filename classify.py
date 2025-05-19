@@ -1,5 +1,3 @@
-# This file takes care of creating a TensorFlow model of the image datasets.
-# It also predicts the crop disease and returns it.
 import tensorflow as tf
 from tensorflow import keras, data
 import numpy as np
@@ -132,45 +130,57 @@ def classify_image(crop, filepath, update_func):
     # This is the number of times the program will do one complete pass of the entire training dataset
     epochs = 15
 
-    # Utilizing keras tuner
-    # We have already run these for all datasets during our testing stage, so there is already data loaded
-    tuner = kt.Hyperband(
-        create_model,
-        objective='val_accuracy',
-        max_epochs=10,
-        factor=3,
-        directory='Tuner_Data',
-        project_name=crop
-    )
+    # Check if a model exists, and load it if it does
+    model_file = f"saved_models/{crop}_model.keras"
 
-    tuner.search(
-        train_ds,
-        epochs=epochs,
-        validation_data=val_ds,
-        callbacks=[
-            tf.keras.callbacks.EarlyStopping(
-            monitor='val_accuracy',
-            patience=0,
-            restore_best_weights=True
-            )
-        ]
-    )
-    
-    # Using keras tuner allows you to get the optimal parameters for each model
-    best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
+    # Note: when the finalized app is run, the program would use a saved model    
+    if os.path.exists(model_file):
+        model = keras.models.load_model(model_file)
 
-    update_func(f"Optimal Number of Units: {best_hps.get('units')}")
-    update_func(f"Optimal Learning Rate: {best_hps.get('learning_rate')}")
-    update_func("")
+    # This part was only used during the training/creation of all of the pre-saved models
+    else:
+        update_func("Training new model...")
+        # Utilizing keras tuner
+        tuner = kt.Hyperband(
+            create_model,
+            objective='val_accuracy',
+            max_epochs=10,
+            factor=3,
+            directory='Tuner_Data',
+            project_name=crop
+        )
 
-    model = tuner.hypermodel.build(best_hps)
-    update_callback = TrainingUpdateCallback(update_func)
-    
-    # Here, callbacks is what allows the listbox in the GUI to update periodically
-    history = model.fit(train_ds, epochs=epochs, validation_data=val_ds, callbacks=[update_callback])
-    
-    update_func("")
-    update_func("Model training is complete.")
+        tuner.search(
+            train_ds,
+            epochs=epochs,
+            validation_data=val_ds,
+            callbacks=[tf.keras.callbacks.EarlyStopping(
+                monitor='val_accuracy',
+                patience=0,
+                restore_best_weights=True
+            )]
+        )
+        
+        # Using keras tuner allows you to get the optimal parameters for each model
+        best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
+
+        update_func(f"Optimal Number of Units: {best_hps.get('units')}")
+        update_func(f"Optimal Learning Rate: {best_hps.get('learning_rate')}")
+        update_func("")
+
+        model = tuner.hypermodel.build(best_hps)
+        update_callback = TrainingUpdateCallback(update_func)
+        
+        # Here, callbacks is what allows the listbox in the GUI to update periodically
+        history = model.fit(train_ds, epochs=epochs, validation_data=val_ds, callbacks=[update_callback])
+
+        update_func("")
+        update_func("Model training is complete.")
+
+        # Save the trained model for future use
+        os.makedirs("saved_models", exist_ok=True)
+        model.save(model_file)
+        update_func(f"Model saved as {model_file}")
 
     # Given the image uploaded by the user, predict the crop disease, returning this along with the percent confidence
     img = keras.utils.load_img(filepath)
